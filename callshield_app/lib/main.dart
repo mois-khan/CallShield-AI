@@ -52,7 +52,7 @@ class _AlertScreenState extends State<AlertScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('CallShield-AI Security', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('CallShield-AI', style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.grey[200],
         elevation: 0,
       ),
