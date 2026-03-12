@@ -9,7 +9,20 @@ import 'services/storage_service.dart';
 import 'history_screen.dart';
 import 'home_screen.dart'; // 🚨 Connecting our new UI!
 
-void main() {
+import 'package:flutter_local_notifications/flutter_local_notifications.dart'; // 🚨 NEW
+import 'services/background_service.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized(); // Required before doing native stuff
+
+  // Ask for notification permissions on Android 13+
+  FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+  flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
+      AndroidFlutterLocalNotificationsPlugin>()?.requestNotificationsPermission();
+
+  // Start the indestructible background brain
+  await initializeBackgroundService();
+
   runApp(const MyApp());
 }
 

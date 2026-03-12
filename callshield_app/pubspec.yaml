@@ -22,8 +22,10 @@ dependencies:
 
   vibration: ^3.1.7
   audioplayers: ^5.2.1
-  flutter_local_notifications: ^17.0.1
   dash_bubble: ^2.0.0
+
+  flutter_background_service: ^3.5.0
+  flutter_local_notifications: ^17.0.6
 
 dev_dependencies:
   flutter_test:
