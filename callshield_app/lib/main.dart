@@ -48,7 +48,7 @@ class _AlertScreenState extends State<AlertScreen> {
   final StorageService _storageService = StorageService();
 
   // 🚨 UPDATE THIS WITH YOUR ACTIVE NGROK URL
-  final String currentNgrokUrl = "https://concavely-inflationary-eddy.ngrok-free.dev";
+  final String currentNgrokUrl = "https://concavely-inflationary-eddy.ngrok-free.dev/flutter-alerts";
 
   String _lastSavedExplanation = "";
   StreamSubscription? _alertSubscription; // 🚨 New: Background Listener
