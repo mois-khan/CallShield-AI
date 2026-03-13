@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:web_socket_channel/io.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // 🚨 UPDATE WITH YOUR NGROK URL
 const String backendUrl = "wss://concavely-inflationary-eddy.ngrok-free.dev/flutter-alerts";
@@ -72,10 +73,27 @@ void onStart(ServiceInstance service) async {
       channel = IOWebSocketChannel(ws);
       debugPrint("✅ [Background] Connected to Node.js!");
 
+
+      // 🚨 NEW: THE SOS HANDSHAKE
+      // Fetch the saved contacts and silently register them with the server
+      final prefs = await SharedPreferences.getInstance();
+      final String? userName = prefs.getString('userName');
+      final String? sosNumber = prefs.getString('sosNumber');
+
+      if (userName != null && userName.isNotEmpty && sosNumber != null && sosNumber.isNotEmpty) {
+        final handshake = jsonEncode({
+          "action": "register_sos",
+          "userName": userName,
+          "contacts": [sosNumber] // Sending as a list in case we add multiple later
+        });
+        channel!.sink.add(handshake);
+        debugPrint("📡 [SOS] Registered emergency contacts for $userName with server!");
+      }
+
+
       channel!.stream.listen((message) {
         final data = json.decode(message);
 
-        // 2. TRIGGER NOTIFICATION IF SCAM DETECTED
         // 2. TRIGGER NOTIFICATION IF SCAM DETECTED
         if (data['type'] == 'ALERT') {
           bool isCritical = data['threatLevel'] == 'CRITICAL';

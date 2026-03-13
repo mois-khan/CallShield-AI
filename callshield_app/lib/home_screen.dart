@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HomeScreen extends StatefulWidget {
   final bool isMonitoring;
@@ -43,6 +44,81 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     super.dispose();
   }
 
+  // 🚨 THE SOS SETUP DIALOG
+  void _showSOSDialog() async {
+    final prefs = await SharedPreferences.getInstance();
+    TextEditingController nameController = TextEditingController(text: prefs.getString('userName') ?? '');
+    TextEditingController phoneController = TextEditingController(text: prefs.getString('sosNumber') ?? '');
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1E1E2A), // Dark theme matching your app
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              const Icon(Icons.emergency, color: Color(0xFFEF4444)),
+              const SizedBox(width: 8),
+              Text("SOS Contacts", style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                "If a critical scam is detected, CallShield will instantly SMS this contact.",
+                style: GoogleFonts.plusJakartaSans(color: Colors.grey[400], fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: nameController,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: "Your Name",
+                  labelStyle: const TextStyle(color: Colors.grey),
+                  enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.grey.shade800)),
+                  focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF6366F1))),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: phoneController,
+                keyboardType: TextInputType.phone,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: "Emergency Phone (e.g. +91...)",
+                  labelStyle: const TextStyle(color: Colors.grey),
+                  enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.grey.shade800)),
+                  focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF6366F1))),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text("Cancel", style: GoogleFonts.plusJakartaSans(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
+              onPressed: () async {
+                // Save to physical device memory!
+                await prefs.setString('userName', nameController.text);
+                await prefs.setString('sosNumber', phoneController.text);
+                if (mounted) Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("SOS Contact Saved!"), backgroundColor: Colors.green),
+                );
+              },
+              child: Text("Save", style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // 🚨 NEW LOGIC: It only glows if the user wants it ON *AND* the server is connected
@@ -69,6 +145,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+
                 // 1. THE HEADER
                 // 1. THE HEADER
                 Row(
@@ -91,10 +168,19 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         ),
                       ],
                     ),
-                    Icon(
-                      widget.isConnected ? Icons.verified_user : Icons.gpp_bad,
-                      color: widget.isConnected ? const Color(0xFF6366F1) : const Color(0xFFEF4444),
-                      size: 32,
+                    // 🚨 THE NEW SOS BUTTON
+                    Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1E1E2A),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFEF4444).withOpacity(0.5)),
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.emergency),
+                        color: const Color(0xFFEF4444),
+                        tooltip: "SOS Settings",
+                        onPressed: _showSOSDialog, // Opens our new setup dialog!
+                      ),
                     )
                   ],
                 ),

@@ -14,7 +14,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   web_socket_channel: ^3.0.3
 
-  shared_preferences: ^2.2.2
+  shared_preferences: ^2.5.4
   google_fonts: ^6.1.0
 
   share_plus: ^10.0.0

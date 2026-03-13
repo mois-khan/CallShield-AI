@@ -60,7 +60,14 @@ wss.on('connection', (ws, req) => {
             try {
                 const data = JSON.parse(message);
                 
-                if (data.action === 'pause_monitoring') {
+                // 🚨 CATCH THE SOS HANDSHAKE
+                if (data.action === 'register_sos') {
+                    // Attach the user's name and contacts directly to their active WebSocket session!
+                    ws.userName = data.userName;
+                    ws.sosContacts = data.contacts;
+                    console.log(`🛡️ [SOS] Registered emergency contacts for ${ws.userName}: ${ws.sosContacts.join(', ')}`);
+                } 
+                else if (data.action === 'pause_monitoring') {
                     setMonitoringState(false);
                 } else if (data.action === 'resume_monitoring') {
                     setMonitoringState(true);

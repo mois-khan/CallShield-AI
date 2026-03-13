@@ -46,17 +46,34 @@ const evaluateWithGemini = async (transcriptBlock) => {
 };
 
 // ==========================================
-    // 🧠 1. THE COGNITIVE ENGINE STATE
-    // ==========================================
-    let contextBuffer = [];
-    let newSentenceCount = 0;
-    let newWordCount = 0;
-    let isGeminiProcessing = false; // The Concurrency Lock
-    const MAX_BUFFER_SIZE = 15;     // The Smart Array Ceiling
+// 🚨 NEW: THE JUST-IN-TIME WARM-UP ENGINE 🚨
+// ==========================================
+const warmUpGemini = async () => {
+    console.log("🔥 [SYSTEM] Firing background warmup ping to Gemini API...");
+    try {
+        const startTime = Date.now();
+        // Send a meaningless string to force Google to open the TLS tunnel
+        await evaluateWithGemini("[SYSTEM]: Network warmup ping. Ignore.");
+        console.log(`✅ [SYSTEM] Gemini TLS connection hot and ready! (Took ${Date.now() - startTime}ms)`);
+    } catch (error) {
+        // We actually don't care if this errors out (e.g., if Gemini fails to parse the JSON format for the warmup).
+        // The simple act of sending the HTTP request forces the TLS handshake to complete!
+        console.log(`✅ [SYSTEM] Gemini connection established (Warmup finished).`);
+    }
+};
 
-    // ==========================================
-    // ⚙️ 2. THE BUFFERING LOGIC
-    // ==========================================
+// ==========================================
+// 🧠 1. THE COGNITIVE ENGINE STATE
+// ==========================================
+let contextBuffer = [];
+let newSentenceCount = 0;
+let newWordCount = 0;
+let isGeminiProcessing = false; // The Concurrency Lock
+const MAX_BUFFER_SIZE = 15;     // The Smart Array Ceiling
+
+// ==========================================
+// ⚙️ 2. THE BUFFERING LOGIC (Untouched!)
+// ==========================================
 const processTranscript = async (speaker, text, broadcastFn) => {
     const formattedLine = `[${speaker.toUpperCase()}]: ${text}`;
     contextBuffer.push(formattedLine);
@@ -75,8 +92,6 @@ const processTranscript = async (speaker, text, broadcastFn) => {
         newWordCount = 0;
 
         try {
-
-            // 🚨 UPDATE 2: TRIGGER THE BROADCAST TO FLUTTER 🚨
             // ⏱️ 1. Measure Gemini's exact thinking time
             const aiStartTime = Date.now();
             const analysis = await evaluateWithGemini(transcriptPayload);
@@ -112,7 +127,7 @@ const processTranscript = async (speaker, text, broadcastFn) => {
     }
 };
 
-const api = process.env.DEEPGRAM_API_KEY
+const api = process.env.DEEPGRAM_API_KEY;
 const handleStream = (ws, broadcastFn) => {
     console.log('[StreamService] Twilio Call Connected');
 
@@ -120,10 +135,8 @@ const handleStream = (ws, broadcastFn) => {
     
     // Helper function to spawn a Deepgram connection for a specific track
     const createDeepgramStream = (trackName) => {
-        // We tell Deepgram exactly what Twilio is sending: 8000Hz Mu-Law
         const deepgramUrl = 'wss://api.deepgram.com/v1/listen?encoding=mulaw&sample_rate=8000&channels=1&model=nova-2&smart_format=true';
         
-        // API key
         const dgSocket = new WebSocket(deepgramUrl, {
             headers: { Authorization: `Token ${api}` }
         });
@@ -136,7 +149,6 @@ const handleStream = (ws, broadcastFn) => {
                 const transcript = response.channel.alternatives[0].transcript;
                 console.log(`🗣️ [${trackName.toUpperCase()}]: ${transcript}`);
 
-                // UPDATE 4: Pass the broadcastFn down into the processing loop
                 processTranscript(trackName, transcript, broadcastFn);
             }
         });
@@ -145,7 +157,6 @@ const handleStream = (ws, broadcastFn) => {
             console.error(`❌ Deepgram Raw Error (${trackName}):`, err);
         });
                 
-        // 🚨 ADDED: Catches HTTP rejections BEFORE the connection opens
         dgSocket.on('unexpected-response', (req, res) => {
             console.error(`🛑 Deepgram Connection Rejected (${trackName}). HTTP Status: ${res.statusCode}`);
             if (res.statusCode === 401) console.error("   -> Reason: Your API Key is missing, invalid, or out of credits.");
@@ -164,30 +175,29 @@ const handleStream = (ws, broadcastFn) => {
         try {
             const msg = JSON.parse(message);
 
-            // 🚨 1. RESET SHIELD ON NEW CALL
+            // 🚨 1. RESET SHIELD ON NEW CALL AND TRIGGER WARMUP
             if (msg.event === 'start') {
                 console.log('📞 New call started. Resetting shield to ACTIVE.');
                 setMonitoringState(true); 
+                
+                // 🚨 NEW: Trigger the background warmup instantly! 
+                // Notice there is no 'await' here, so it doesn't block Twilio or Deepgram.
+                warmUpGemini();
             }
 
             // 🚨 2. THE GATEKEEPER
             if (msg.event === 'media' && msg.media.payload) {
-                // Check if the user has paused the app from Flutter
                 if (getMonitoringState() === true) {
                     const track = msg.media.track; 
                     
-                    // Decode the base64 payload into raw binary bytes
                     const rawAudio = Buffer.from(msg.media.payload, 'base64');
                     
-                    // Fire the raw bytes directly to the correct Deepgram stream instantly
                     if (track === 'inbound' && dgInbound.readyState === WebSocket.OPEN) {
                         dgInbound.send(rawAudio);
                     } else if (track === 'outbound' && dgOutbound.readyState === WebSocket.OPEN) {
                         dgOutbound.send(rawAudio);
                     }
                 }
-                // If getMonitoringState() is false, the code skips the audio sending entirely. 
-                // The packet is safely dropped, Deepgram stays silent, and you save API credits!
             }
         } catch (error) {
             console.error('Error in Node.js stream handler:', error);
