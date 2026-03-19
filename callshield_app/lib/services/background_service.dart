@@ -7,7 +7,7 @@ import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:web_socket_channel/io.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:background_sms/background_sms.dart';
+import 'package:telephony/telephony.dart';
 
 // 🚨 UPDATE WITH YOUR NGROK URL
 const String backendUrl = "wss://concavely-inflationary-eddy.ngrok-free.dev/flutter-alerts";
@@ -162,17 +162,21 @@ void onStart(ServiceInstance service) async {
                 debugPrint("📱 [NATIVE] Threat Critical! Firing native SMS to $sosNumber...");
 
                 try {
-                  // Fire the text message via the Android SIM!
-                  SmsStatus result = await BackgroundSms.sendMessage(
-                      phoneNumber: sosNumber,
-                      message: msgBody
-                  );
+                  // Initialize the modern telephony package
+                  final Telephony telephony = Telephony.instance;
 
-                  if (result == SmsStatus.sent) {
-                    debugPrint("✅ [NATIVE] SOS SMS Sent Successfully via SIM card!");
-                  } else {
-                    debugPrint("❌ [NATIVE] Failed to send SMS. Status: $result");
-                  }
+                  // Fire the text message via the Android SIM!
+                  telephony.sendSms(
+                      to: sosNumber,
+                      message: msgBody,
+                      statusListener: (SendStatus status) {
+                        if (status == SendStatus.SENT) {
+                          debugPrint("✅ [NATIVE] SOS SMS Sent Successfully via SIM card!");
+                        } else if (status == SendStatus.DELIVERED) {
+                          debugPrint("✅ [NATIVE] SOS SMS Delivered to recipient!");
+                        }
+                      }
+                  );
                 } catch (e) {
                   debugPrint("❌ [NATIVE] SMS Plugin Error: $e");
                 }
