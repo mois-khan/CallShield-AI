@@ -91,6 +91,12 @@ wss.on('connection', (ws, req) => {
         ws.on('message', (message) => {
             try {
                 const data = JSON.parse(message);
+
+                // 🏓 THE HEARTBEAT ECHO
+                if (data.action === 'ping') {
+                    ws.send(JSON.stringify({ action: 'pong' }));
+                    return; // Stop processing, this is just a heartbeat
+                }
                 
                 // 🚨 CATCH THE SOS HANDSHAKE
                 if (data.action === 'register_sos') {
