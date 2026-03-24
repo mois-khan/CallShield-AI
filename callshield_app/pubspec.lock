@@ -581,6 +581,14 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  sms_sender_background:
+    dependency: "direct main"
+    description:
+      name: sms_sender_background
+      sha256: ee8bca044d12077e8e6e41af8b7274781d16c47aa318f75377f5318fdf60ef10
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.7"
   source_span:
     dependency: transitive
     description:
@@ -621,14 +629,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.4.0"
-  telephony:
-    dependency: "direct main"
-    description:
-      name: telephony
-      sha256: "821e074acec3c611e48edadd50a6d9fef864943771a545da7924adcc8509ada9"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.2.0"
   term_glyph:
     dependency: transitive
     description:

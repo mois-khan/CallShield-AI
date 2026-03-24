@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
-import 'package:telephony/telephony.dart';
+import 'package:sms_sender_background/sms_sender.dart';
 
 class HomeScreen extends StatefulWidget {
   final bool isMonitoring;
@@ -241,9 +241,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         );
 
                         try {
-                          final Telephony telephony = Telephony.instance;
-                          telephony.sendSms(
-                            to: sosNumber,
+                          final smsSender = SmsSender();
+                          await smsSender.sendSms(
+                            phoneNumber: sosNumber,
                             message: "CallShield Debug: This is a foreground test from the main app screen.",
                           );
                           debugPrint("✅ [DEBUG UI] SMS command handed to OS from foreground!");

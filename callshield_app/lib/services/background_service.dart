@@ -7,7 +7,7 @@ import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:web_socket_channel/io.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:telephony/telephony.dart';
+import 'package:sms_sender_background/sms_sender.dart';
 
 // 🚨 UPDATE WITH YOUR NGROK URL
 const String backendUrl = "wss://concavely-inflationary-eddy.ngrok-free.dev/flutter-alerts";
@@ -206,18 +206,52 @@ void onStart(ServiceInstance service) async {
                 debugPrint("📱 [NATIVE] Threat Critical! Firing native SMS to $sosNumber...");
 
                 try {
-                  final Telephony telephony = Telephony.instance;
+                  final smsSender = SmsSender();
 
-                  // 🚨 FIRE AND FORGET:
-                  // By removing the 'statusListener', we bypass the Android 14 Receiver crash!
-                  telephony.sendSms(
-                    to: sosNumber,
+                  // 1. Fire the text message
+                  await smsSender.sendSms(
+                    phoneNumber: sosNumber,
                     message: msgBody,
                   );
 
-                  debugPrint("✅ [NATIVE] SMS command successfully handed to Android OS!");
+                  debugPrint("✅ [NATIVE] SMS successfully handed to Android OS via modern API!");
+
+                  // 🚨 2. THE NEW SUCCESS NOTIFICATION
+                  await flutterLocalNotificationsPlugin.show(
+                    DateTime.now().millisecondsSinceEpoch.remainder(90000) + 1, // Unique ID so it doesn't overwrite the red alert!
+                    '✅ SOS Dispatched',
+                    'Emergency text message successfully sent to ${userName ?? sosNumber}.',
+                    const NotificationDetails(
+                      android: AndroidNotificationDetails(
+                        'scam_alerts',
+                        'Threat Alerts',
+                        importance: Importance.max,
+                        priority: Priority.max,
+                        icon: 'ic_bg_service_small',
+                        color: Color(0xFF10B981), // Emerald Green for success!
+                      ),
+                    ),
+                  );
+
                 } catch (e) {
                   debugPrint("❌ [NATIVE] SMS Plugin Error: $e");
+
+                  // Optional: You can even notify them if it fails!
+                  await flutterLocalNotificationsPlugin.show(
+                    999,
+                    '❌ SOS Failed',
+                    'Could not send emergency text. Please check your signal or SIM balance.',
+                    const NotificationDetails(
+                      android: AndroidNotificationDetails(
+                        'scam_alerts',
+                        'Threat Alerts',
+                        importance: Importance.max,
+                        priority: Priority.max,
+                        icon: 'ic_bg_service_small',
+                        color: Color(0xFFEF4444),
+                      ),
+                    ),
+                  );
                 }
               } else {
                 debugPrint("⚠️ [NATIVE] Critical Threat, but no SOS number saved in memory!");
