@@ -3,18 +3,17 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 
 class HomeScreen extends StatefulWidget {
   final bool isMonitoring;
-  final bool isConnected; // 🚨 NEW: Added connection state
+  final bool isConnected;
   final VoidCallback onToggle;
-
-
 
   const HomeScreen({
     super.key,
     required this.isMonitoring,
-    required this.isConnected, // 🚨 NEW
+    required this.isConnected,
     required this.onToggle,
   });
 
@@ -26,9 +25,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
 
+  // 🚨 NEW: Local state variable to track connection dynamically
+  late bool _liveConnectionStatus;
+
   @override
   void initState() {
     super.initState();
+
+    // Initialize with whatever the parent widget passed down
+    _liveConnectionStatus = widget.isConnected;
+
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
@@ -37,6 +43,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     _pulseAnimation = Tween<double>(begin: 1.0, end: 1.15).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
+
+    // 🚨 THE ISOLATE BRIDGE LISTENER
+    // Listen for connection drops/reconnects from the background service
+    FlutterBackgroundService().on('server_status').listen((event) {
+      if (event != null && mounted) {
+        setState(() {
+          _liveConnectionStatus = event['isConnected'] as bool;
+        });
+      }
+    });
   }
 
   @override
@@ -55,7 +71,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       context: context,
       builder: (context) {
         return AlertDialog(
-          backgroundColor: const Color(0xFF1E1E2A), // Dark theme matching your app
+          backgroundColor: const Color(0xFF1E1E2A),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Row(
             children: [
@@ -104,23 +120,26 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
               onPressed: () async {
-                // 🚨 1. Request SMS Permission from the user
+                // Request SMS Permission from the user
                 var status = await Permission.sms.status;
                 if (!status.isGranted) {
                   status = await Permission.sms.request();
                 }
 
                 if (status.isGranted) {
-                  // 🚨 2. Save to physical device memory!
+                  // Save to physical device memory!
                   await prefs.setString('userName', nameController.text);
                   await prefs.setString('sosNumber', phoneController.text);
+
+                  // 🚨 THE ISOLATE SYNC COMMAND
+                  // Tell the background service to push this to Node.js INSTANTLY
+                  FlutterBackgroundService().invoke('force_sos_sync');
 
                   if (mounted) Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text("SOS Contact Saved & Armed!"), backgroundColor: Colors.green),
                   );
                 } else {
-                  // If they deny permission, warn them!
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text("SMS Permission is required for SOS!"), backgroundColor: Colors.red),
                   );
@@ -136,13 +155,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
-    // 🚨 NEW LOGIC: It only glows if the user wants it ON *AND* the server is connected
-    bool isSystemActive = widget.isMonitoring && widget.isConnected;
+    // 🚨 Use the local dynamic state, not the static widget.isConnected
+    bool isSystemActive = widget.isMonitoring && _liveConnectionStatus;
 
-    // 🚨 NEW LOGIC: Dynamic Status Text
+    // Dynamic Status Text
     String statusText = "System Paused";
     Color statusColor = Colors.grey;
-    if (!widget.isConnected) {
+    if (!_liveConnectionStatus) {
       statusText = "Server Disconnected";
       statusColor = const Color(0xFFEF4444); // Red warning
     } else if (isSystemActive) {
@@ -160,9 +179,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-
-                // 1. THE HEADER
-                // 1. THE HEADER
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -174,16 +190,15 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           style: GoogleFonts.plusJakartaSans(color: Colors.grey[400], fontSize: 16),
                         ),
                         Text(
-                          widget.isConnected ? "You are protected." : "Action Required.",
+                          _liveConnectionStatus ? "You are protected." : "Action Required.",
                           style: GoogleFonts.plusJakartaSans(
-                            color: widget.isConnected ? Colors.white : const Color(0xFFEF4444),
+                            color: _liveConnectionStatus ? Colors.white : const Color(0xFFEF4444),
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                       ],
                     ),
-                    // 🚨 THE NEW SOS BUTTON
                     Container(
                       decoration: BoxDecoration(
                         color: const Color(0xFF1E1E2A),
@@ -194,20 +209,19 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         icon: const Icon(Icons.emergency),
                         color: const Color(0xFFEF4444),
                         tooltip: "SOS Settings",
-                        onPressed: _showSOSDialog, // Opens our new setup dialog!
+                        onPressed: _showSOSDialog,
                       ),
                     )
                   ],
                 ),
                 const SizedBox(height: 50),
 
-                // 2. THE HERO SHIELD (Pulsing Radar)
+                // THE HERO SHIELD (Pulsing Radar)
                 Center(
                   child: AnimatedBuilder(
                     animation: _pulseAnimation,
                     builder: (context, child) {
                       return Transform.scale(
-                        // Only pulse if actively connected and monitoring
                         scale: isSystemActive ? _pulseAnimation.value : 1.0,
                         child: Container(
                           width: 180,
@@ -238,8 +252,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                               child: Icon(
                                 isSystemActive ? Icons.security : Icons.shield_outlined,
                                 size: 50,
-                                // Red icon if disconnected, white if active, grey if paused
-                                color: !widget.isConnected
+                                color: !_liveConnectionStatus
                                     ? const Color(0xFFEF4444)
                                     : (isSystemActive ? Colors.white : Colors.grey),
                               ),
@@ -264,7 +277,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 ),
                 const SizedBox(height: 50),
 
-                // 3. THE COMMAND CENTER (Midnight Glassmorphism)
+                // THE COMMAND CENTER
                 ClipRRect(
                   borderRadius: BorderRadius.circular(24),
                   child: BackdropFilter(
@@ -289,7 +302,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                !widget.isConnected
+                                !_liveConnectionStatus
                                     ? "Waiting for connection..."
                                     : (widget.isMonitoring ? "Analyzing in real-time" : "Sleeping"),
                                 style: GoogleFonts.plusJakartaSans(color: Colors.grey[400], fontSize: 14),
@@ -298,8 +311,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           ),
                           Switch.adaptive(
                             value: widget.isMonitoring,
-                            // 🚨 Disable switch if there is no server connection!
-                            onChanged: widget.isConnected
+                            onChanged: _liveConnectionStatus
                                 ? (val) => widget.onToggle()
                                 : null,
                             activeColor: const Color(0xFF6366F1),
@@ -312,7 +324,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 ),
                 const SizedBox(height: 40),
 
-                // 4. THREAT INTELLIGENCE FEED (Unchanged)
                 Text(
                   "Latest Scam Tactics",
                   style: GoogleFonts.plusJakartaSans(

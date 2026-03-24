@@ -70,7 +70,6 @@ void onStart(ServiceInstance service) async {
   int reconnectDelay = 2; // Starts at 2 seconds, doubles on failure
 
   // 🔄 THE STATE SYNC FUNCTION
-  // We separate this so we can call it on connect AND whenever the user updates the UI
   Future<void> syncSOSState() async {
     final prefs = await SharedPreferences.getInstance();
     // Force a reload from disk to bypass Isolate caching issues
@@ -107,6 +106,9 @@ void onStart(ServiceInstance service) async {
       reconnectDelay = 2;
       missedPongs = 0;
 
+      // 🚨 NEW: Tell the UI we connected!
+      service.invoke('server_status', {'isConnected': true});
+
       // Sync the latest saved contacts from the hard drive immediately
       await syncSOSState();
 
@@ -126,6 +128,9 @@ void onStart(ServiceInstance service) async {
 
       // 🎧 THE LISTENER
       channel!.stream.listen((message) async {
+
+        debugPrint("📥 [Network Incoming] $message");
+
         final data = json.decode(message);
 
         // Catch the Pong and reset the strike counter!
@@ -134,9 +139,97 @@ void onStart(ServiceInstance service) async {
           return;
         }
 
-        // ... [KEEP YOUR EXISTING ALERT & SMS LOGIC HERE] ...
+        // ==========================================
+        // 🚨 2. TRIGGER NOTIFICATION & SMS LOGIC
+        // ==========================================
+        if (data['type'] == 'ALERT') {
+          debugPrint("🔔 [ALERT] Threat payload received! Processing...");
+          bool isCritical = data['threatLevel'] == 'CRITICAL';
+
+          // ⏱️ Calculate Latency
+          String latencyText = "";
+          if (data['dispatch_time'] != null) {
+            final int serverTime = data['dispatch_time'];
+            final int phoneTime = DateTime.now().millisecondsSinceEpoch;
+            final int deliveryLatency = phoneTime - serverTime;
+            latencyText = "\n\n[⚡ E2E Delivery: ${deliveryLatency}ms]";
+          }
+
+          // 🛡️ Attempt to show Notification (Safely!)
+          try {
+            debugPrint("🔔 [ALERT] Attempting to show OS notification...");
+            await flutterLocalNotificationsPlugin.show(
+              id: DateTime.now().millisecondsSinceEpoch.remainder(100000),
+              title: isCritical ? '🚨 CRITICAL SCAM DETECTED' : '⚠️ SUSPICIOUS CALL',
+              body: "${data['explanation']}$latencyText",
+              notificationDetails: NotificationDetails(
+                android: AndroidNotificationDetails(
+                  'scam_alerts',
+                  'Threat Alerts',
+                  importance: Importance.max,
+                  priority: Priority.max,
+                  icon: 'ic_bg_service_small', // Ensure this icon exists!
+                  color: const Color(0xFFEF4444),
+                  fullScreenIntent: true,
+                  styleInformation: BigTextStyleInformation(
+                    "${data['explanation']}$latencyText",
+                    htmlFormatBigText: true,
+                  ),
+                ),
+              ),
+            );
+            debugPrint("✅ [ALERT] OS Notification displayed!");
+          } catch (e) {
+            debugPrint("❌ [ALERT] Failed to show OS notification: $e");
+          }
+
+          // Update the UI
+          service.invoke('onThreatDetected', data);
+
+          // ==========================================
+          // 🚨 3. THE NATIVE ANDROID SMS TRIGGER
+          // ==========================================
+          if (isCritical) {
+            if (!hasSentSOSThisSession) {
+              hasSentSOSThisSession = true;
+
+              final prefs = await SharedPreferences.getInstance();
+              final String? userName = prefs.getString('userName');
+              final String? sosNumber = prefs.getString('sosNumber');
+
+              if (sosNumber != null && sosNumber.isNotEmpty) {
+                final String probability = data['probability']?.toString() ?? '99';
+                final String tactics = (data['tactics'] as List?)?.join(', ') ?? 'Unknown';
+
+                String msgBody = "🚨 CallShield SOS 🚨\n${userName ?? 'A user'} is on a flagged scam call (Threat Level: $probability%).\n\nTactics detected: $tactics.\n\nPlease call them immediately to interrupt the scam.";
+
+                debugPrint("📱 [NATIVE] Threat Critical! Firing native SMS to $sosNumber...");
+
+                try {
+                  final Telephony telephony = Telephony.instance;
+
+                  // 🚨 FIRE AND FORGET:
+                  // By removing the 'statusListener', we bypass the Android 14 Receiver crash!
+                  telephony.sendSms(
+                    to: sosNumber,
+                    message: msgBody,
+                  );
+
+                  debugPrint("✅ [NATIVE] SMS command successfully handed to Android OS!");
+                } catch (e) {
+                  debugPrint("❌ [NATIVE] SMS Plugin Error: $e");
+                }
+              } else {
+                debugPrint("⚠️ [NATIVE] Critical Threat, but no SOS number saved in memory!");
+              }
+            } else {
+              debugPrint("🛡️ [NATIVE] Anti-Spam Lock Active: SMS already sent this session.");
+            }
+          }
+        }
 
       }, onDone: () {
+        service.invoke('server_status', {'isConnected': false});
         // 📉 GRACEFUL OR UNGRACEFUL DISCONNECT
         pingTimer?.cancel();
         debugPrint("❌ [Network] Socket Closed. Backoff: Reconnecting in ${reconnectDelay}s...");
@@ -146,6 +239,7 @@ void onStart(ServiceInstance service) async {
       });
 
     } catch (e) {
+      service.invoke('server_status', {'isConnected': false});
       // 💥 CONNECTION REFUSED / NO INTERNET
       pingTimer?.cancel();
       debugPrint("❌ [Network] Connection Failed: $e");
@@ -161,5 +255,11 @@ void onStart(ServiceInstance service) async {
   // Listen for commands from the UI (like Pause/Resume)
   service.on('stopService').listen((event) {
     service.stopSelf();
+  });
+
+  // 🚨 NEW: Listen for SOS updates from the UI!
+  service.on('force_sos_sync').listen((event) async {
+    debugPrint("🔄 [Isolate Bridge] UI requested immediate SOS sync!");
+    await syncSOSState();
   });
 }
