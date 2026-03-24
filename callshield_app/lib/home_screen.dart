@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'dart:convert'; // Added for jsonDecode
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -22,18 +23,17 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+// 🚨 FIXED: Removed the extra curly brace and added WidgetsBindingObserver
+class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
 
-  // 🚨 NEW: Local state variable to track connection dynamically
   late bool _liveConnectionStatus;
 
   @override
   void initState() {
     super.initState();
 
-    // Initialize with whatever the parent widget passed down
     _liveConnectionStatus = widget.isConnected;
 
     _pulseController = AnimationController(
@@ -45,8 +45,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
-    // 🚨 THE ISOLATE BRIDGE LISTENER
-    // Listen for connection drops/reconnects from the background service
+    // 🚨 1. Register the observer to listen for Wake-Ups
+    WidgetsBinding.instance.addObserver(this);
+
+    // 🚨 2. Check for alerts immediately on fresh app boot
+    _checkForPendingAlerts();
+
+    // 🚨 3. Listen for connection drops/reconnects
     FlutterBackgroundService().on('server_status').listen((event) {
       if (event != null && mounted) {
         setState(() {
@@ -54,13 +59,108 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         });
       }
     });
+
+    // 🚨 4. Keep listening for alerts if the app is ALREADY open
+    FlutterBackgroundService().on('onThreatDetected').listen((event) {
+      if (event != null && mounted) {
+        _showScamAlert(event);
+      }
+    });
   }
 
   @override
   void dispose() {
+    // 🚨 Unregister the observer
+    WidgetsBinding.instance.removeObserver(this);
     _pulseController.dispose();
     super.dispose();
   }
+
+  // ==========================================
+  // 🚨 THE ANSWERING MACHINE LOGIC 🚨
+  // ==========================================
+
+  // THIS FIRES EVERY TIME THE APP COMES TO THE FOREGROUND
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      debugPrint("📱 App Resumed! Checking for missed alerts...");
+      _checkForPendingAlerts();
+    }
+  }
+
+  // THE MEMORY CHECKER
+  Future<void> _checkForPendingAlerts() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.reload(); // Force refresh memory
+    final String? alertJson = prefs.getString('pending_alert');
+
+    if (alertJson != null) {
+      debugPrint("🚨 Found a missed alert in memory! Triggering UI...");
+
+      // 1. Delete it so it doesn't pop up again next time
+      await prefs.remove('pending_alert');
+
+      // 2. Parse it and show your beautiful red banner
+      if (mounted) {
+        final data = jsonDecode(alertJson);
+        _showScamAlert(data);
+      }
+    }
+  }
+
+  // 🚨 YOUR SCAM BANNER UI
+  void _showScamAlert(dynamic data) {
+    // NOTE: This is a placeholder!
+    // Replace this with the code you use to draw that red screenshot you showed me!
+    showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) {
+          return Container(
+            padding: const EdgeInsets.all(24),
+            decoration: const BoxDecoration(
+              color: Color(0xFF1E1E2A),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 60),
+                const SizedBox(height: 16),
+                Text(
+                  "CRITICAL THREAT DETECTED",
+                  style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  "Scam Probability: ${data['probability']}%",
+                  style: GoogleFonts.plusJakartaSans(color: Colors.redAccent, fontSize: 18),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  data['explanation'] ?? "Suspicious activity detected.",
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.plusJakartaSans(color: Colors.grey[400]),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red, padding: const EdgeInsets.symmetric(vertical: 16)),
+                    onPressed: () => Navigator.pop(context),
+                    child: Text("DISMISS ALARM", style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.bold)),
+                  ),
+                )
+              ],
+            ),
+          );
+        }
+    );
+  }
+  // ==========================================
+
 
   // 🚨 THE SOS SETUP DIALOG
   void _showSOSDialog() async {
@@ -132,7 +232,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   await prefs.setString('userName', nameController.text);
                   await prefs.setString('sosNumber', phoneController.text);
 
-                  // 🚨 THE ISOLATE SYNC COMMAND
                   // Tell the background service to push this to Node.js INSTANTLY
                   FlutterBackgroundService().invoke('force_sos_sync');
 
@@ -156,18 +255,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
-    // 🚨 Use the local dynamic state, not the static widget.isConnected
     bool isSystemActive = widget.isMonitoring && _liveConnectionStatus;
 
-    // Dynamic Status Text
     String statusText = "System Paused";
     Color statusColor = Colors.grey;
     if (!_liveConnectionStatus) {
       statusText = "Server Disconnected";
-      statusColor = const Color(0xFFEF4444); // Red warning
+      statusColor = const Color(0xFFEF4444);
     } else if (isSystemActive) {
       statusText = "Monitoring Active";
-      statusColor = const Color(0xFF6366F1); // Indigo active
+      statusColor = const Color(0xFF6366F1);
     }
 
     return Scaffold(
@@ -216,53 +313,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   ],
                 ),
                 const SizedBox(height: 50),
-
-// ==========================================
-                // 🚨 TEMPORARY DEBUG BUTTON 🚨
-                // ==========================================
-                Center(
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange,
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    ),
-                    icon: const Icon(Icons.send_to_mobile, color: Colors.white),
-                    label: Text(
-                      "TEST FOREGROUND SMS",
-                      style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.bold),
-                    ),
-                    onPressed: () async {
-                      final prefs = await SharedPreferences.getInstance();
-                      final String? sosNumber = prefs.getString('sosNumber');
-
-                      if (sosNumber != null && sosNumber.isNotEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text("Attempting to send text to $sosNumber..."))
-                        );
-
-                        try {
-                          final smsSender = SmsSender();
-                          await smsSender.sendSms(
-                            phoneNumber: sosNumber,
-                            message: "CallShield Debug: This is a foreground test from the main app screen.",
-                          );
-                          debugPrint("✅ [DEBUG UI] SMS command handed to OS from foreground!");
-                        } catch (e) {
-                          debugPrint("❌ [DEBUG UI] SMS Failed: $e");
-                          ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red)
-                          );
-                        }
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text("Please save an SOS number first!"), backgroundColor: Colors.red)
-                        );
-                      }
-                    },
-                  ),
-                ),
-                const SizedBox(height: 30),
-                // ==========================================
 
                 // THE HERO SHIELD (Pulsing Radar)
                 Center(

@@ -146,6 +146,14 @@ void onStart(ServiceInstance service) async {
           debugPrint("🔔 [ALERT] Threat payload received! Processing...");
           bool isCritical = data['threatLevel'] == 'CRITICAL';
 
+          // 🚨 THE ANSWERING MACHINE FIX
+          // Save the alert to memory so the UI can find it when it wakes up!
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('pending_alert', jsonEncode(data));
+
+          // Update the UI if it happens to be awake
+          service.invoke('onThreatDetected', data);
+
           // ⏱️ Calculate Latency
           String latencyText = "";
           if (data['dispatch_time'] != null) {
@@ -216,12 +224,12 @@ void onStart(ServiceInstance service) async {
 
                   debugPrint("✅ [NATIVE] SMS successfully handed to Android OS via modern API!");
 
-                  // 🚨 2. THE NEW SUCCESS NOTIFICATION
+                  // 🚨 2. THE NEW SUCCESS NOTIFICATION (FIXED)
                   await flutterLocalNotificationsPlugin.show(
-                    DateTime.now().millisecondsSinceEpoch.remainder(90000) + 1, // Unique ID so it doesn't overwrite the red alert!
-                    '✅ SOS Dispatched',
-                    'Emergency text message successfully sent to ${userName ?? sosNumber}.',
-                    const NotificationDetails(
+                    id: DateTime.now().millisecondsSinceEpoch.remainder(90000) + 1,
+                    title: '✅ SOS Dispatched',
+                    body: 'Emergency text message successfully sent to ${userName ?? sosNumber}.',
+                    notificationDetails: const NotificationDetails(
                       android: AndroidNotificationDetails(
                         'scam_alerts',
                         'Threat Alerts',
@@ -236,12 +244,12 @@ void onStart(ServiceInstance service) async {
                 } catch (e) {
                   debugPrint("❌ [NATIVE] SMS Plugin Error: $e");
 
-                  // Optional: You can even notify them if it fails!
+                  // Optional error catch notification (FIXED)
                   await flutterLocalNotificationsPlugin.show(
-                    999,
-                    '❌ SOS Failed',
-                    'Could not send emergency text. Please check your signal or SIM balance.',
-                    const NotificationDetails(
+                    id: 999,
+                    title: '❌ SOS Failed',
+                    body: 'Could not send emergency text. Please check your signal or SIM balance.',
+                    notificationDetails: const NotificationDetails(
                       android: AndroidNotificationDetails(
                         'scam_alerts',
                         'Threat Alerts',

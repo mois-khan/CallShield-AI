@@ -16,7 +16,7 @@ class HardwareAlertService {
       android: initializationSettingsAndroid,
     );
 
-    await _notificationsPlugin.initialize(initializationSettings);
+    await _notificationsPlugin.initialize(settings: initializationSettings);
 
     // 🚨 ADDED THIS: Ask Android 13+ for permission to show notifications
     await _notificationsPlugin

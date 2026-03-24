@@ -4,6 +4,26 @@ const { getMonitoringState, setMonitoringState } = require('../state');
 
 const { GoogleGenerativeAI, SchemaType } = require("@google/generative-ai");
 
+// ==========================================
+// 🛡️ THE PRIVACY SCRUBBER (ZERO-KNOWLEDGE)
+// ==========================================
+function scrubPII(rawText) {
+    if (!rawText) return "";
+    let sanitizedText = rawText;
+
+    // 1. Hunt for Credit Cards (13 to 19 digits)
+    sanitizedText = sanitizedText.replace(/\b(?:\d[ -]*?){13,19}\b/g, '[CREDIT_CARD_REDACTED]');
+
+    // 2. Hunt for SSN / Aadhaar
+    sanitizedText = sanitizedText.replace(/\b\d{3}[- ]?\d{2}[- ]?\d{4}\b/g, '[SSN_REDACTED]'); 
+    sanitizedText = sanitizedText.replace(/\b\d{4}[- ]?\d{4}[- ]?\d{4}\b/g, '[AADHAAR_REDACTED]'); 
+
+    // 3. Hunt for OTPs, CVVs, and PINs (3 to 6 digits)
+    sanitizedText = sanitizedText.replace(/\b\d{3,6}\b/g, '[OTP_OR_PIN_REDACTED]');
+
+    return sanitizedText;
+}
+
 // Initialize the Gemini SDK
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
@@ -146,10 +166,18 @@ const handleStream = (ws, broadcastFn) => {
         dgSocket.on('message', (data) => {
             const response = JSON.parse(data);
             if (response.is_final && response.channel && response.channel.alternatives[0].transcript) {
-                const transcript = response.channel.alternatives[0].transcript;
-                console.log(`🗣️ [${trackName.toUpperCase()}]: ${transcript}`);
+                const rawTranscript = response.channel.alternatives[0].transcript;
+                
+                if (rawTranscript && rawTranscript.trim().length > 0) {
+                    // 🚨 1. INTERCEPT AND SCRUB IMMEDIATELY
+                    const safeTranscript = scrubPII(rawTranscript);
 
-                processTranscript(trackName, transcript, broadcastFn);
+                    // 🚨 2. STRICT RULE: NEVER log the 'rawTranscript'
+                    console.log(`🗣️ [${trackName.toUpperCase()}]: ${safeTranscript}`);
+
+                    // 🚨 3. Send ONLY the scrubbed text to Gemini
+                    processTranscript(trackName, safeTranscript, broadcastFn);
+                }
             }
         });
 
