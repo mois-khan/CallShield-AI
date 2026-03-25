@@ -8,6 +8,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:web_socket_channel/io.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sms_sender_background/sms_sender.dart';
+import 'package:flutter/services.dart';
 
 // 🚨 UPDATE WITH YOUR NGROK URL
 const String backendUrl = "wss://concavely-inflationary-eddy.ngrok-free.dev/flutter-alerts";
@@ -275,6 +276,42 @@ void onStart(ServiceInstance service) async {
           }
         }
 
+        // ==========================================
+        // 🚨 4. GRANDMA MODE: THE KILL SWITCH
+        // ==========================================
+        if (data['type'] == 'KILL_CALL') {
+          debugPrint("💀 [KILL_CALL] Received critical threat execution command!");
+
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.reload();
+          final bool isGrandmaMode = prefs.getBool('grandma_mode') ?? false;
+
+          if (isGrandmaMode) {
+            debugPrint("🛡️ [GRANDMA MODE] Armed! Passing kill command to UI Thread...");
+
+            // 🚨 NEW: Tell the UI to pull the trigger!
+            service.invoke('trigger_grandma_mode', data);
+
+            // Show the "Threat Neutralized" Green Notification
+            await flutterLocalNotificationsPlugin.show(
+              id: 8888,
+              title: '🛡️ THREAT NEUTRALIZED',
+              body: 'CallShield AI forcefully disconnected a highly probable scam call (Threat: ${data['probability']}%).',
+              notificationDetails: const NotificationDetails(
+                android: AndroidNotificationDetails(
+                  'scam_alerts',
+                  'Threat Alerts',
+                  importance: Importance.max,
+                  priority: Priority.max,
+                  icon: 'ic_bg_service_small',
+                  color: Color(0xFF10B981),
+                ),
+              ),
+            );
+          } else {
+            debugPrint("⚠️ [GRANDMA MODE] Disarmed. User must hang up manually.");
+          }
+        }
       }, onDone: () {
         service.invoke('server_status', {'isConnected': false});
         // 📉 GRACEFUL OR UNGRACEFUL DISCONNECT

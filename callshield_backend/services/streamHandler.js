@@ -50,7 +50,7 @@ const responseSchema = {
 
 // Configure the model - "Gemini-2.5-flash"
 const model = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash",
+    model: "gemini-3.1-flash-lite-preview",
     systemInstruction: "You are a real-time cybersecurity AI monitoring a live phone call. Analyze the provided transcript snippet. Detect signs of social engineering, scams, or fraud. You must strictly return the requested JSON format and nothing else.",
     generationConfig: {
         responseMimeType: "application/json",
@@ -137,6 +137,18 @@ const processTranscript = async (speaker, text, broadcastFn) => {
                 
                 broadcastFn(threatPayload);
                 console.log("📡 Threat Alert broadcasted to Flutter app!");
+            }
+
+            // 🚨 2. NEW: THE KILL SWITCH COMMAND (Greater than 95%)
+            if (analysis.scam_probability >= 95 && broadcastFn) {
+                console.log("💀 [SYSTEM] Critical Threat Level Reached! Dispatching KILL_CALL command...");
+                broadcastFn({
+                    type: "KILL_CALL",
+                    probability: analysis.scam_probability,
+                    // 🚨 NEW: Pass the full forensic data to the UI for the Receipt
+                    tactics: analysis.flagged_tactics,
+                    explanation: analysis.explanation
+                });
             }
 
             isGeminiProcessing = false; 

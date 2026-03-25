@@ -64,10 +64,19 @@ class HardwareAlertService {
     NotificationDetails platformDetails = NotificationDetails(android: androidDetails);
 
     await _notificationsPlugin.show(
-      0, // Notification ID
-      isCritical ? '🚨 CRITICAL FRAUD ALERT' : '⚠️ SUSPICIOUS CALLER',
-      'Scam Probability: $probability% - $reason',
-      platformDetails,
+      id: 8888,
+      title: 'Title',
+      body: 'Body',
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'scam_alerts',
+          'Threat Alerts',
+          importance: Importance.max,
+          priority: Priority.max,
+          // icon: 'ic_bg_service_small', // Ensure this matches your Android drawables
+          color: Color(0xFFEF4444), // Red color
+        ),
+      ),
     );
   }
 }

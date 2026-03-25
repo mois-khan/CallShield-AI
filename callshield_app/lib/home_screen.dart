@@ -1,5 +1,5 @@
 import 'dart:ui';
-import 'dart:convert'; // Added for jsonDecode
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -7,6 +7,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:sms_sender_background/sms_sender.dart';
 import 'live_radar_screen.dart';
+import 'package:flutter/services.dart';
 
 class HomeScreen extends StatefulWidget {
   final bool isMonitoring;
@@ -24,18 +25,23 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-// 🚨 FIXED: Removed the extra curly brace and added WidgetsBindingObserver
 class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
 
   late bool _liveConnectionStatus;
 
+  bool isGrandmaModeEnabled = false;
+
+  bool _isModalOpen = false; // 🚨 The Anti-Spam Lock
+  static const platform = MethodChannel('com.callshield.native/telecom'); // 🚨 The Kotlin Bridge
+
   @override
   void initState() {
     super.initState();
 
     _liveConnectionStatus = widget.isConnected;
+    _loadGrandmaModeState();
 
     _pulseController = AnimationController(
       vsync: this,
@@ -46,13 +52,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
-    // 🚨 1. Register the observer to listen for Wake-Ups
     WidgetsBinding.instance.addObserver(this);
-
-    // 🚨 2. Check for alerts immediately on fresh app boot
     _checkForPendingAlerts();
 
-    // 🚨 3. Listen for connection drops/reconnects
     FlutterBackgroundService().on('server_status').listen((event) {
       if (event != null && mounted) {
         setState(() {
@@ -61,27 +63,71 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       }
     });
 
-    // 🚨 4. Keep listening for alerts if the app is ALREADY open
     FlutterBackgroundService().on('onThreatDetected').listen((event) {
       if (event != null && mounted) {
         _showScamAlert(event);
+      }
+    });
+
+    // 🚨 Listen for Grandma Mode trigger from the background
+    FlutterBackgroundService().on('trigger_grandma_mode').listen((event) async {
+      if (mounted) {
+        debugPrint("💥 [UI Bridge] Executing Native Kotlin Hangup!");
+        try {
+          await platform.invokeMethod('endCall');
+
+          // 🚨 If the normal red warning banner is open, dismiss it!
+          if (_isModalOpen) {
+            Navigator.of(context).pop();
+            _isModalOpen = false;
+          }
+
+          // 🚨 Launch the beautiful Post-Call Receipt
+          if (event != null) {
+            _showThreatNeutralizedReceipt(event);
+          }
+        } catch (e) {
+          debugPrint("❌ [UI Bridge] Native Hangup Failed: $e");
+        }
       }
     });
   }
 
   @override
   void dispose() {
-    // 🚨 Unregister the observer
     WidgetsBinding.instance.removeObserver(this);
     _pulseController.dispose();
     super.dispose();
   }
 
-  // ==========================================
-  // 🚨 THE ANSWERING MACHINE LOGIC 🚨
-  // ==========================================
+  Future<void> _loadGrandmaModeState() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      isGrandmaModeEnabled = prefs.getBool('grandma_mode') ?? false;
+    });
+  }
 
-  // THIS FIRES EVERY TIME THE APP COMES TO THE FOREGROUND
+  Future<void> _toggleGrandmaMode(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('grandma_mode', value);
+    setState(() {
+      isGrandmaModeEnabled = value;
+    });
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            value ? '🛡️ Grandma Mode: ACTIVE (Auto-Hangup Armed)' : 'Grandma Mode: OFF',
+            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold),
+          ),
+          backgroundColor: value ? const Color(0xFFEF4444) : Colors.grey[800],
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
@@ -90,19 +136,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     }
   }
 
-  // THE MEMORY CHECKER
   Future<void> _checkForPendingAlerts() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.reload(); // Force refresh memory
+    await prefs.reload();
     final String? alertJson = prefs.getString('pending_alert');
 
     if (alertJson != null) {
-      debugPrint("🚨 Found a missed alert in memory! Triggering UI...");
-
-      // 1. Delete it so it doesn't pop up again next time
       await prefs.remove('pending_alert');
-
-      // 2. Parse it and show your beautiful red banner
       if (mounted) {
         final data = jsonDecode(alertJson);
         _showScamAlert(data);
@@ -110,10 +150,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     }
   }
 
-  // 🚨 YOUR SCAM BANNER UI
+  // 🚨 THE FIXED SCAM BANNER UI
   void _showScamAlert(dynamic data) {
-    // NOTE: This is a placeholder!
-    // Replace this with the code you use to draw that red screenshot you showed me!
+    if (_isModalOpen) return;
+
+    _isModalOpen = true;
+
     showModalBottomSheet(
         context: context,
         isScrollControlled: true,
@@ -158,12 +200,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             ),
           );
         }
-    );
+    ).whenComplete(() {
+      _isModalOpen = false;
+    });
   }
-  // ==========================================
 
-
-  // 🚨 THE SOS SETUP DIALOG
   void _showSOSDialog() async {
     final prefs = await SharedPreferences.getInstance();
     TextEditingController nameController = TextEditingController(text: prefs.getString('userName') ?? '');
@@ -222,18 +263,15 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
               onPressed: () async {
-                // Request SMS Permission from the user
                 var status = await Permission.sms.status;
                 if (!status.isGranted) {
                   status = await Permission.sms.request();
                 }
 
                 if (status.isGranted) {
-                  // Save to physical device memory!
                   await prefs.setString('userName', nameController.text);
                   await prefs.setString('sosNumber', phoneController.text);
 
-                  // Tell the background service to push this to Node.js INSTANTLY
                   FlutterBackgroundService().invoke('force_sos_sync');
 
                   if (mounted) Navigator.pop(context);
@@ -315,7 +353,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 ),
                 const SizedBox(height: 50),
 
-                // THE HERO SHIELD (Pulsing Radar)
                 Center(
                   child: AnimatedBuilder(
                     animation: _pulseAnimation,
@@ -376,7 +413,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 ),
                 const SizedBox(height: 50),
 
-                // THE COMMAND CENTER
                 ClipRRect(
                   borderRadius: BorderRadius.circular(24),
                   child: BackdropFilter(
@@ -391,7 +427,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          // (Inside your Command Center row in home_screen.dart)
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -406,7 +441,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                               ),
                               const SizedBox(height: 12),
 
-                              // 🚨 NEW BUTTON TO OPEN THE RADAR 🚨
                               if (_liveConnectionStatus)
                                 OutlinedButton.icon(
                                   style: OutlinedButton.styleFrom(
@@ -433,6 +467,49 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         ],
                       ),
                     ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E1E2A),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isGrandmaModeEnabled ? const Color(0xFFEF4444).withOpacity(0.5) : Colors.transparent,
+                      width: 1,
+                    ),
+                  ),
+                  child: SwitchListTile(
+                    title: Text(
+                      'Grandma Mode',
+                      style: GoogleFonts.plusJakartaSans(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Auto-hangup calls if critical threat > 95%',
+                      style: GoogleFonts.plusJakartaSans(
+                        color: Colors.grey[400],
+                        fontSize: 12,
+                      ),
+                    ),
+                    secondary: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: isGrandmaModeEnabled ? const Color(0xFFEF4444).withOpacity(0.2) : Colors.white10,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.phone_disabled_rounded,
+                        color: isGrandmaModeEnabled ? const Color(0xFFEF4444) : Colors.white54,
+                      ),
+                    ),
+                    value: isGrandmaModeEnabled,
+                    activeColor: const Color(0xFFEF4444),
+                    onChanged: _toggleGrandmaMode,
                   ),
                 ),
                 const SizedBox(height: 40),
@@ -511,6 +588,138 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           ),
         ],
       ),
+    );
+  }
+
+  // ==========================================
+  // 🚨 PHASE 3: THE POST-CALL RECEIPT (DOPAMINE HIT)
+  // ==========================================
+  void _showThreatNeutralizedReceipt(dynamic data) {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: false, // Force the user to interact with the receipt
+      barrierColor: Colors.black87, // Darken the background heavily
+      transitionDuration: const Duration(milliseconds: 400),
+      pageBuilder: (context, animation, secondaryAnimation) {
+
+        // Extract tactics safely
+        List<dynamic> rawTactics = data['tactics'] ?? [];
+        String tacticsString = rawTactics.isNotEmpty
+            ? rawTactics.join(', ')
+            : 'Coercion & Impersonation';
+
+        return Scaffold(
+          backgroundColor: Colors.transparent,
+          body: Center(
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 24),
+              padding: const EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                  color: const Color(0xFF1E1E2A),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: const Color(0xFF10B981), width: 2), // Emerald Green Border
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF10B981).withOpacity(0.3),
+                      blurRadius: 30,
+                      spreadRadius: 10,
+                    )
+                  ]
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // THE SHIELD ICON
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981).withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.gpp_good_rounded, color: Color(0xFF10B981), size: 80),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // TITLE
+                  Text(
+                    "THREAT NEUTRALIZED",
+                    style: GoogleFonts.plusJakartaSans(
+                      color: const Color(0xFF10B981),
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Call forcefully terminated to protect your assets.",
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.plusJakartaSans(color: Colors.grey[400], fontSize: 14),
+                  ),
+                  const SizedBox(height: 32),
+
+                  // FORENSIC DATA BOX
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0F172A),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Column(
+                      children: [
+                        _buildReceiptRow(Icons.radar, "Threat Level", "${data['probability']}% (Critical)"),
+                        const Divider(color: Colors.white10, height: 24),
+                        _buildReceiptRow(Icons.psychology, "Attacker Tactics", tacticsString),
+                        const Divider(color: Colors.white10, height: 24),
+                        _buildReceiptRow(Icons.shield_rounded, "Data Protected", "Financial Routing, OTPs, Voice Footprint"),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+
+                  // THE DISMISS BUTTON
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF10B981),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      child: Text("SECURE & RETURN", style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold, fontSize: 16)),
+                    ),
+                  )
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // Helper widget for the receipt rows
+  Widget _buildReceiptRow(IconData icon, String title, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: Colors.grey[500], size: 20),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: GoogleFonts.plusJakartaSans(color: Colors.grey[500], fontSize: 12)),
+              const SizedBox(height: 4),
+              Text(value, style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+            ],
+          ),
+        )
+      ],
     );
   }
 }
