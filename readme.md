@@ -41,14 +41,6 @@ Instead of just blocking the caller, CallShield fights back. It automatically co
 
 ---
 
-## 📸 Screenshots
-
-| Live Threat Radar | "Grandma Mode" Receipt | Threat Dashboard |
-|:---:|:---:|:---:|
-| ![Live Radar](images/radar.png) | ![Threat Receipt](images/receipt.png) | ![Threat Dashboard](images/dashboard.png) |
-
----
-
 ## 🛠️ Tech Stack
 * **Frontend:** Flutter, Dart, Kotlin (Native Method Channels)
 * **Backend:** Node.js, Express, WebSockets
