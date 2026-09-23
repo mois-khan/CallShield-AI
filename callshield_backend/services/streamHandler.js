@@ -28,7 +28,7 @@ const evaluateWithGroq = async (transcriptBlock) => {
             { role: "system", content: systemPrompt },
             { role: "user", content: transcriptBlock }
         ],
-        model: "llama-3.3-70b-versatile",
+        model: "qwen/qwen3.8-27b",
         temperature: 0.1,
         response_format: { type: "json_object" }
     });
