@@ -26,7 +26,7 @@ const responseSchema = {
 };
 
 const model = genAI.getGenerativeModel({
-    model: "gemini-3.1-flash-lite",
+    model: "gemini-2.5-flash-lite",
     systemInstruction: "You are a real-time cybersecurity AI monitoring a live phone call. Analyze the provided transcript snippet. Detect signs of social engineering, scams, or fraud. You must strictly return the requested JSON format and nothing else.",
     generationConfig: { responseMimeType: "application/json", responseSchema: responseSchema },
 });
