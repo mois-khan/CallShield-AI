@@ -1,7 +1,7 @@
 require('dotenv').config(); 
 const WebSocket = require('ws');
 const { getMonitoringState, setMonitoringState } = require('../state');
-const { GoogleGenerativeAI, SchemaType } = require("@google/generative-ai");
+const Groq = require('groq-sdk');
 
 function scrubPII(rawText) {
     if (!rawText) return "";
@@ -13,35 +13,35 @@ function scrubPII(rawText) {
     return sanitizedText;
 }
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-const responseSchema = {
-    type: SchemaType.OBJECT,
-    properties: {
-        scam_probability: { type: SchemaType.INTEGER },
-        flagged_tactics: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
-        explanation: { type: SchemaType.STRING }
-    },
-    required: ["scam_probability", "flagged_tactics", "explanation"]
+const evaluateWithGroq = async (transcriptBlock) => {
+    const systemPrompt = `You are a real-time cybersecurity AI monitoring a live phone call. Analyze the provided transcript snippet. Detect signs of social engineering, scams, or fraud. You must strictly return a JSON object with this exact schema and nothing else:
+{
+    "scam_probability": <integer from 0 to 100>,
+    "flagged_tactics": [<array of string tactics>],
+    "explanation": "<string explanation>"
+}`;
+
+    const chatCompletion = await groq.chat.completions.create({
+        messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: transcriptBlock }
+        ],
+        model: "llama-3.3-70b-versatile",
+        temperature: 0.1,
+        response_format: { type: "json_object" }
+    });
+
+    return JSON.parse(chatCompletion.choices[0].message.content);
 };
 
-const model = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash-lite",
-    systemInstruction: "You are a real-time cybersecurity AI monitoring a live phone call. Analyze the provided transcript snippet. Detect signs of social engineering, scams, or fraud. You must strictly return the requested JSON format and nothing else.",
-    generationConfig: { responseMimeType: "application/json", responseSchema: responseSchema },
-});
-
-const evaluateWithGemini = async (transcriptBlock) => {
-    const result = await model.generateContent(transcriptBlock);
-    return JSON.parse(result.response.text());
-};
-
-const warmUpGemini = async () => {
+const warmUpGroq = async () => {
     try {
-        await evaluateWithGemini("[SYSTEM]: Network warmup ping. Ignore.");
-        console.log(`✅ [SYSTEM] Gemini connection established (Warmup finished).`);
+        await evaluateWithGroq("[SYSTEM]: Network warmup ping. Ignore.");
+        console.log(`✅ [SYSTEM] Groq connection established (Warmup finished).`);
     } catch (error) {
-        console.error("❌ [SYSTEM] Gemini connection warm-up failed:", error);
+        console.error("❌ [SYSTEM] Groq connection warm-up failed:", error);
     }
 };
 
@@ -61,7 +61,7 @@ const handleStream = (ws, broadcastFn) => {
     let contextBuffer = [];
     let newSentenceCount = 0;
     let newWordCount = 0;
-    let isGeminiProcessing = false;
+    let isGroqProcessing = false;
 
     const processTranscript = async (speaker, text) => {
         const formattedLine = `[${speaker.toUpperCase()}]: ${text}`;
@@ -74,18 +74,18 @@ const handleStream = (ws, broadcastFn) => {
         if (contextBuffer.length > 15) contextBuffer.shift();
 
         if (newSentenceCount >= 5 && newWordCount >= 35) {
-            if (isGeminiProcessing) return;
-            isGeminiProcessing = true;
+            if (isGroqProcessing) return;
+            isGroqProcessing = true;
             
             const transcriptPayload = contextBuffer.join('\n');
             newSentenceCount = 0;
             newWordCount = 0;
 
-            console.log(`🧠 [Gemini AI] Evaluating transcript payload:\n${transcriptPayload}`);
+            console.log(`🧠 [Groq AI] Evaluating transcript payload:\n${transcriptPayload}`);
 
             try {
-                const analysis = await evaluateWithGemini(transcriptPayload);
-                console.log(`🧠 [Gemini AI] Verdict received:`, JSON.stringify(analysis, null, 2));
+                const analysis = await evaluateWithGroq(transcriptPayload);
+                console.log(`🧠 [Groq AI] Verdict received:`, JSON.stringify(analysis, null, 2));
 
                 // Update Session Aggregates
                 if (analysis.scam_probability > activeSession.maxThreatLevel) {
@@ -109,10 +109,10 @@ const handleStream = (ws, broadcastFn) => {
                 if (analysis.scam_probability >= 95 && broadcastFn) {
                     broadcastFn({ type: "KILL_CALL", probability: analysis.scam_probability });
                 }
-                isGeminiProcessing = false; 
+                isGroqProcessing = false; 
             } catch (error) {
-                console.error("❌ [Gemini AI] Evaluation failed:", error);
-                isGeminiProcessing = false; 
+                console.error("❌ [Groq AI] Evaluation failed:", error);
+                isGroqProcessing = false; 
             }
         }
     };
@@ -147,7 +147,7 @@ const handleStream = (ws, broadcastFn) => {
                 setMonitoringState(true); 
                 // Capture Caller ID from Twilio, or use realistic Indian demo number
                 activeSession.callerId = msg.start?.customParameters?.callerId || "+91 9876543210";
-                warmUpGemini();
+                warmUpGroq();
             }
             if (msg.event === 'media' && msg.media.payload && getMonitoringState() === true) {
                 const rawAudio = Buffer.from(msg.media.payload, 'base64');
