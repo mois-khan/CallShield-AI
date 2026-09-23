@@ -16,11 +16,11 @@ function scrubPII(rawText) {
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 const evaluateWithGroq = async (transcriptBlock) => {
-    const systemPrompt = `You are a real-time cybersecurity AI monitoring a live phone call. Analyze the provided transcript snippet. Detect signs of social engineering, scams, or fraud. You must strictly return a JSON object with this exact schema and nothing else:
+    const systemPrompt = `You are a real-time cybersecurity AI monitoring a live phone call. Analyze the transcript for social engineering, scams, or fraud. Return ONLY a JSON object with this exact schema:
 {
-    "scam_probability": <integer from 0 to 100>,
-    "flagged_tactics": [<array of string tactics>],
-    "explanation": "<string explanation>"
+    "scam_probability": <integer 0-100>,
+    "flagged_tactics": [<short string array, max 3 items>],
+    "explanation": "<1 sentence max, under 20 words>"
 }`;
 
     const chatCompletion = await groq.chat.completions.create({
@@ -30,6 +30,7 @@ const evaluateWithGroq = async (transcriptBlock) => {
         ],
         model: "qwen/qwen3.8-27b",
         temperature: 0.1,
+        max_tokens: 200,
         response_format: { type: "json_object" }
     });
 
