@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
@@ -8,8 +9,26 @@
 
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
+    <!-- MESSAGE SHIELD ONLY: its own background protection service. specialUse
+         is used because the service has no time limit (dataSync is capped and
+         a persistent SMS-screening service must not be killed mid-day), and
+         the user turns it on explicitly. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <!-- MESSAGE SHIELD ONLY: restart background protection after a reboot or an
+         app update, when the user enabled automatic protection. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- MESSAGE SHIELD ONLY: lets the settings screen offer the system battery
+         exemption dialog. Nothing is changed without the user's confirmation in
+         the system dialog. -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
     <uses-permission android:name="android.permission.SEND_SMS"/>
     <uses-permission android:name="android.permission.READ_PHONE_STATE"/>
+
+    <!-- MESSAGE SHIELD ONLY: opt-in automatic screening of incoming SMS.
+         Requested at runtime only when the user enables automatic protection.
+         Manual scanning (paste / clipboard / share) needs no permission. -->
+    <uses-permission android:name="android.permission.RECEIVE_SMS"/>
 
     <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS" />
     <uses-permission android:name="android.permission.CALL_PHONE" />
@@ -40,6 +59,18 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+
+            <!-- MESSAGE SHIELD ONLY: share a message / selected text to CallShield -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="text/plain"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.PROCESS_TEXT"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="text/plain"/>
+            </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
@@ -52,6 +83,61 @@
             android:foregroundServiceType="dataSync"
             android:exported="true" />
 
+        <!-- MESSAGE SHIELD ONLY: own foreground service with a headless Flutter
+             engine. Screens incoming SMS with the UI closed, keeps a low-priority
+             ongoing notification and is event driven (no polling). Stopped when
+             the user turns automatic protection off. -->
+        <service
+            android:name=".MessageShieldProtectionService"
+            android:exported="false"
+            android:stopWithTask="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="on_device_sms_scam_screening_for_the_users_own_messages" />
+        </service>
+
+        <!-- MESSAGE SHIELD ONLY: best-effort recovery of the protection service
+             after reboot / app update (still gated on the user's setting). -->
+        <receiver
+            android:name=".MessageShieldBootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.QUICKBOOT_POWERON"/>
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+            </intent-filter>
+        </receiver>
+
+        <!-- MESSAGE SHIELD ONLY: queues incoming SMS for on-device analysis.
+             Does nothing unless automatic protection is enabled by the user. -->
+        <receiver
+            android:name=".MessageShieldSmsReceiver"
+            android:exported="true"
+            android:permission="android.permission.BROADCAST_SMS">
+            <intent-filter android:priority="200">
+                <action android:name="android.provider.Telephony.SMS_RECEIVED"/>
+            </intent-filter>
+        </receiver>
+
+        <!-- FLOATING POPUP ONLY: dash_bubble's BubbleService is launched via
+             startForegroundService() but the plugin's own manifest declares the
+             service with no foregroundServiceType, so on Android 14+ (targetSdk
+             34+) startForeground() throws MissingForegroundServiceTypeException
+             and crashes the app. Merging a type here fixes the crash without
+             forking the plugin. FOREGROUND_SERVICE_SPECIAL_USE is already
+             granted for Message Shield; no new permission is added. -->
+        <service
+            android:name="dev.moaz.dash_bubble.src.BubbleService"
+            android:foregroundServiceType="specialUse"
+            tools:node="merge">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="floating_callshield_popup_bubble" />
+        </service>
+
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
@@ -63,5 +149,23 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- MESSAGE SHIELD ONLY: resolve a readable name for the app Android
+             told us shared a message. No app data is read, this only lets the
+             package manager return the app label. -->
+        <package android:name="com.whatsapp" />
+        <package android:name="com.whatsapp.w4b" />
+        <package android:name="org.telegram.messenger" />
+        <package android:name="com.google.android.apps.messaging" />
+        <package android:name="com.android.mms" />
+        <package android:name="com.samsung.android.messaging" />
+        <package android:name="com.google.android.gm" />
+        <package android:name="com.microsoft.office.outlook" />
+        <package android:name="com.android.chrome" />
+        <package android:name="org.mozilla.firefox" />
+        <package android:name="com.instagram.android" />
+        <package android:name="com.facebook.katana" />
+        <package android:name="com.facebook.orca" />
+        <package android:name="org.thoughtcrime.securesms" />
+        <package android:name="com.truecaller" />
     </queries>
 </manifest>

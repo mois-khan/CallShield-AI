@@ -1,0 +1,133 @@
+{
+  "version": "1.0.0",
+  "description": "Local scam intelligence: known scam techniques, impersonated authorities, URL reputation tables and legitimate-message context phrases. Pure data - adding entries never requires an engine change.",
+  "categories": {
+    "financial_fraud": {
+      "objectives": ["Move your money to the scammer", "Harvest card and UPI credentials"],
+      "actions": ["Do not transfer, approve or reverse any payment", "Never share card number, CVV, expiry or UPI PIN", "Check the transaction only inside your bank app"]
+    },
+    "credential_theft": {
+      "objectives": ["Steal authentication information (OTP / PIN / CVV / password)"],
+      "actions": ["Never share OTP, PIN, CVV or passwords - not even with 'bank staff'", "Do not read a code out over a call", "Do not enter credentials on links that arrive by message"]
+    },
+    "impersonation": {
+      "objectives": ["Pressure you using a fake authority", "Impersonate a bank, government or police officer"],
+      "actions": ["Do not trust the claimed identity", "Verify only through the official app, website or printed helpline", "No government agency demands instant payment by UPI"]
+    },
+    "social_engineering": {
+      "objectives": ["Panic you into acting before you verify"],
+      "actions": ["Stop and speak to someone you trust first", "Do not send money from a message alone", "Call the person back on the number you already know"]
+    },
+    "investment_scam": {
+      "objectives": ["Get you to invest or pay an upfront fee"],
+      "actions": ["Never pay registration, training or processing fees for a job or loan", "No genuine scheme guarantees fixed daily returns", "Check SEBI / RBI / IRDAI registration before investing"]
+    },
+    "reward_scam": {
+      "objectives": ["Make you pay a fee to 'release' a prize"],
+      "actions": ["You cannot win a lottery you never entered", "Never pay a fee or tax to receive a prize", "Do not share bank details for a cashback"]
+    },
+    "delivery_scam": {
+      "objectives": ["Collect a fake delivery, customs or redelivery fee"],
+      "actions": ["Track the parcel only on the official courier app", "Customs duty is never collected over chat or UPI links", "Do not pay a redelivery fee to an unknown account"]
+    },
+    "extortion": {
+      "objectives": ["Blackmail you with threats or private content"],
+      "actions": ["Do not pay - paying rarely stops blackmail", "Save screenshots as evidence", "Report to cybercrime.gov.in and your local police"]
+    },
+    "romance_scam": {
+      "objectives": ["Use an emotional bond to extract money"],
+      "actions": ["Be careful when money is requested before you ever meet", "Do not send gift cards, crypto or remittances", "Reverse image search the profile picture"]
+    },
+    "subscription_trap": {
+      "objectives": ["Trap you into a recurring payment or mandate"],
+      "actions": ["Do not approve UPI collect requests you did not start", "Review and revoke mandates in your bank / UPI app", "Block the sender"]
+    },
+    "phishing": {
+      "objectives": ["Get you to open a credential-harvesting page"],
+      "actions": ["Do not tap the link", "Open the official app instead and check the alert there", "Block and report the sender"]
+    }
+  },
+  "authorities": {
+    "bank": ["sbi", "state bank", "hdfc", "icici", "axis bank", "kotak", "pnb", "punjab national", "bank of baroda", "canara bank", "union bank", "idfc", "yes bank", "indusind", "federal bank", "rbl", "bank of india", "central bank of india", "bank"],
+    "government": ["income tax", "it department", "gst", "rbi", "reserve bank", "uidai", "aadhaar", "aadhar", "pan card", "epfo", "passport office", "municipal corporation", "govt", "government", "sarkari", "subsidy", "pm scheme", "yojana"],
+    "police": ["police", "cyber crime", "cybercrime", "cbi", "crime branch", "customs", "enforcement directorate", "narcotics", "trai", "court", "fir", "legal notice", "warrant", "digital arrest"],
+    "telecom": ["jio", "airtel", "vi ", "vodafone", "bsnl", "trai", "sim card", "telecom"],
+    "courier": ["fedex", "dhl", "bluedart", "blue dart", "dtdc", "india post", "ekart", "delhivery", "speed post", "courier", "customs clearance", "parcel", "shipment"],
+    "wallet": ["paytm", "phonepe", "google pay", "gpay", "amazon pay", "mobikwik", "freecharge", "bhim", "upi"],
+    "brands": ["amazon", "flipkart", "myntra", "meesho", "swiggy", "zomato", "netflix", "hotstar", "prime video", "bigbasket", "blinkit", "zepto", "cred", "razorpay"],
+    "support": ["customer care", "customer support", "helpdesk", "help desk", "technical support", "service center", "nodal officer", "verification team", "security team", "fraud department", "compliance department"]
+  },
+  "fingerprints": [
+    {"id": "fp_kyc_expiry", "category": "phishing", "weight": 22, "label": "KYC expiry urgency", "phrases": ["kyc is expired", "kyc has expired", "update your kyc", "kyc update", "complete your kyc", "re-kyc", "kyc verification"]},
+    {"id": "fp_account_block", "category": "phishing", "weight": 22, "label": "Account block threat", "phrases": ["account will be blocked", "account will be suspended", "account has been temporarily locked", "account will be frozen", "ac block", "a/c blocked", "deactivate your account", "avoid deactivation"]},
+    {"id": "fp_reverse_transfer", "category": "financial_fraud", "weight": 24, "label": "Reverse-transfer trick", "phrases": ["wrong transaction", "credited by mistake", "by mistake", "reverse the transaction", "transfer it back", "transfer back", "extra amount was credited"]},
+    {"id": "fp_upi_collect", "category": "financial_fraud", "weight": 26, "label": "Fake UPI collect request", "phrases": ["approve the request", "approve the collect request", "accept the request in your upi app", "approve in your upi", "accept the payment request", "approve the payment request"]},
+    {"id": "fp_refund_code", "category": "credential_theft", "weight": 26, "label": "Refund needs your code", "phrases": ["refund", "pending refund", "claim your refund", "release your refund", "share the code", "code you received"]},
+    {"id": "fp_otp_call", "category": "credential_theft", "weight": 28, "label": "OTP read out over call", "phrases": ["read the otp", "tell me the otp", "share the otp", "otp bata", "otp bhejo", "share the code", "read the code", "share the 6 digit", "tell me the code", "forward the code"]},
+    {"id": "fp_digital_arrest", "category": "impersonation", "weight": 30, "label": "Digital arrest / police threat", "phrases": ["digital arrest", "you will be arrested", "arrest warrant", "police custody", "cbi case", "money laundering", "illegal items", "narcotics", "drugs case", "fir has been registered", "non-bailable"]},
+    {"id": "fp_gov_penalty", "category": "impersonation", "weight": 24, "label": "Government penalty demand", "phrases": ["pay penalty", "penalty of", "income tax department", "it department", "court notice", "settlement amount", "legal action", "tax evasion"]},
+    {"id": "fp_trai_disconnect", "category": "impersonation", "weight": 22, "label": "Telecom disconnection threat", "phrases": ["trai", "number will be disconnected", "number will be deactivated", "illegal activity on your number", "press 1"]},
+    {"id": "fp_customs_parcel", "category": "delivery_scam", "weight": 24, "label": "Customs parcel fee", "phrases": ["customs", "clearance fee", "parcel is held", "stuck at customs", "illegal parcel", "shipping charge", "redelivery fee", "delivery fee", "handling fee", "duty is unpaid", "parcel will be returned"]},
+    {"id": "fp_lottery_winner", "category": "reward_scam", "weight": 28, "label": "Lottery / lucky draw win", "phrases": ["lottery", "lucky draw", "you have won", "you won", "congratulations you", "kbc", "jackpot", "prize money", "claim your prize", "scratch card", "giveaway"]},
+    {"id": "fp_cashback_claim", "category": "reward_scam", "weight": 20, "label": "Cashback claim lure", "phrases": ["cashback of", "claim your cashback", "reward points", "gift voucher worth", "spin and win"]},
+    {"id": "fp_investment_guarantee", "category": "investment_scam", "weight": 26, "label": "Guaranteed-return investment", "phrases": ["guaranteed profit", "guaranteed returns", "assured returns", "300 percent", "double your", "fixed daily return", "daily profit", "no risk", "risk free profit", "monthly returns"]},
+    {"id": "fp_crypto_wallet", "category": "investment_scam", "weight": 24, "label": "Crypto deposit demand", "phrases": ["usdt", "bitcoin", "btc", "crypto wallet", "mining", "wallet address", "deposit usdt", "trc20"]},
+    {"id": "fp_trading_group", "category": "investment_scam", "weight": 22, "label": "Trading group invite", "phrases": ["vip group", "trading group", "telegram group", "join our group", "trading tips", "stock tips", "intraday tips", "sebi registered"]},
+    {"id": "fp_job_fee", "category": "investment_scam", "weight": 24, "label": "Job / training fee", "phrases": ["registration fee", "processing fee", "training kit", "security deposit for job", "part time job", "work from home", "data entry job", "simple mobile task", "typing job", "deposit rs"]},
+    {"id": "fp_loan_fee", "category": "financial_fraud", "weight": 22, "label": "Loan processing fee", "phrases": ["loan approved", "instant loan", "pre approved loan", "processing fee", "loan release", "disbursement fee", "no cibil"]},
+    {"id": "fp_card_block", "category": "credential_theft", "weight": 24, "label": "Card block + CVV demand", "phrases": ["card is blocked", "card has been blocked", "cvv", "c.v.v", "c v v", "card expiry", "card expire", "16 digit", "card number and cvv", "debit card number", "unblock"]},
+    {"id": "fp_pin_request", "category": "credential_theft", "weight": 28, "label": "PIN / password request", "phrases": ["upi pin", "atm pin", "enter your pin", "share your pin", "net banking password", "user id and password", "login credentials", "mpin", "password and pin"]},
+    {"id": "fp_sim_swap", "category": "credential_theft", "weight": 24, "label": "SIM activation OTP", "phrases": ["new sim", "sim activation", "activate your sim", "sim will be blocked", "port your number", "e-sim"]},
+    {"id": "fp_remote_access", "category": "social_engineering", "weight": 30, "label": "Remote access / screen share", "phrases": ["anydesk", "teamviewer", "quick support", "rustdesk", "screen sharing", "share your screen", "install this application", "download this app", "screen share"]},
+    {"id": "fp_secrecy", "category": "social_engineering", "weight": 26, "label": "Secrecy demand", "phrases": ["do not tell anyone", "don't tell anyone", "do not inform", "keep this secret", "keep it confidential", "do not tell the police", "do not discuss", "tell nobody", "kisi ko na batao"]},
+    {"id": "fp_urgency", "category": "social_engineering", "weight": 14, "label": "Artificial urgency", "phrases": ["immediately", "urgent", "right now", "within 24 hours", "within 2 hours", "last warning", "final warning", "time is running out", "before it expires", "act now", "immediatly", "jaldi"]},
+    {"id": "fp_emergency_family", "category": "social_engineering", "weight": 26, "label": "Emergency family framing", "phrases": ["accident", "hospital", "needs money urgently", "in trouble", "police custody", "this is my new number", "phone broke", "icu", "medical emergency"]},
+    {"id": "fp_extortion", "category": "extortion", "weight": 32, "label": "Blackmail / sextortion", "phrases": ["private photos", "your photos", "your chats", "i will send them", "leak", "upload your", "pay or i will", "will harm your family", "send it to your contacts", "screenshot of your"]},
+    {"id": "fp_romance", "category": "romance_scam", "weight": 20, "label": "Romance framing", "phrases": ["i love you", "my dear", "gift for you", "parcel from abroad", "customs gift", "foreign friend", "i want to meet you but"]},
+    {"id": "fp_subscription_trap", "category": "subscription_trap", "weight": 20, "label": "Subscription trap", "phrases": ["auto debit", "mandate", "subscription renew", "renewal charge", "membership fee", "cancel your subscription to avoid"]},
+    {"id": "fp_promo_spam", "category": "spam", "weight": 14, "label": "Bulk promotional spam", "phrases": ["flat 70", "flat 80", "flat 90", "huge discount", "biggest sale", "limited period offer", "buy now", "free gift", "increase your followers", "lose weight", "guaranteed result", "forward this to", "reply yes to", "adult chat", "dating"]},
+    {"id": "fp_delivery_fee_link", "category": "delivery_scam", "weight": 20, "label": "Delivery fee link", "phrases": ["reschedule delivery", "update your address", "incomplete address", "we attempted delivery", "order is on hold", "delivery failed"]}, {
+  "id": "fp_electricity_disconnect",
+  "category": "impersonation",
+  "weight": 20,
+  "label": "Utility disconnection threat",
+  "phrases": [
+   "service will be disconnected",
+   "power will be cut",
+   "bijli kat",
+   "connection will be disconnected",
+   "meter will be removed"
+  ]
+ },
+    {"id": "fp_investment_whatsapp", "category": "investment_scam", "weight": 16, "label": "Move chat to WhatsApp/Telegram", "phrases": ["whatsapp me", "whatsapp this number", "dm me", "message me on telegram", "wa.me", "t.me", "contact on whatsapp", "sms me on"]},
+    {"id": "fp_hinglish_scam", "category": "suspicious", "weight": 16, "label": "Hinglish scam phrasing", "phrases": ["paise bhejo", "pesa bhejo", "account band ho jayega", "kyc abhi", "turant bhejo", "otp bata do", "link par click", "aapka number band", "lottery lag gayi", "jeet gaye hai"]}
+  ],
+  "legit_context_phrases": [
+    "do not share this otp", "do not share this code", "never share your otp", "never share the otp",
+    "do not share your otp", "bank never asks", "never asks for your", "never ask for otp",
+    "we never call", "do not share it with anyone", "bank staff never asks", "keep it confidential and do not share",
+    "otp is confidential", "do not disclose", "share na karein", "kisi ke saath share na"
+  ],
+  "legit_marker_phrases": [
+    "no action is required", "no fee is required", "your kyc is already updated", "already updated and verified",
+    "if this was not you", "call our official helpline", "login to the official app", "official app",
+    "visit our official website", "reply stop to unsubscribe", "to unsubscribe reply stop",
+    "unsubscribe", "you can view the full statement", "thank you for shopping", "out for delivery",
+    "ticket number", "has been resolved", "is ready in the app", "available balance"
+  ],
+  "scam_sender_patterns": [
+    {"id": "sender_intl_unknown", "label": "International sender on a local message", "weight": 8, "regex": "^\\+\\d{1,3}(?!91)"},
+    {"id": "sender_alpha_unknown", "label": "Unregistered alphanumeric sender id", "weight": 4, "regex": "^[a-z]{2,}-?[a-z0-9]{3,}$"},
+    {"id": "sender_spoofed_bank", "label": "Sender id imitating a bank", "weight": 10, "regex": "(bank|bk|pay|kyc|gov|tax|police|customs|rbi|trai)"}
+  ],
+  "url": {
+    "shorteners": ["bit.ly", "tinyurl.com", "goo.gl", "t.co", "ow.ly", "is.gd", "buff.ly", "cutt.ly", "rb.gy", "rebrand.ly", "tiny.cc", "surl.li", "shorturl.at", "shrtco.de", "t.ly"],
+    "chat_shorteners": ["wa.me", "t.me", "chat.whatsapp.com", "api.whatsapp.com", "telegram.me", "discord.gg", "joinchat"],
+    "suspicious_tlds": ["xyz", "top", "click", "online", "info", "site", "club", "icu", "live", "link", "buzz", "rest", "ru", "tk", "ml", "ga", "cf", "gq", "work", "loan", "fit", "zip", "mov", "monster", "quest", "sbs", "support"],
+    "free_hosts": ["000webhostapp", "web.app", "firebaseapp", "pages.dev", "vercel.app", "netlify.app", "herokuapp", "glitch.me", "weebly", "wixsite", "blogspot", "github.io", "repl.co", "ngrok"],
+    "path_keywords": ["kyc", "otp", "verify", "verification", "login", "signin", "secure", "update", "account", "refund", "claim", "reward", "cashback", "prize", "winner", "unlock", "reactivate", "customs", "delivery", "pay-fee", "job", "loan", "wallet", "upi", "bank", "banking", "recover", "support", "helpdesk", "lottery", "gift", "bonus", "free"],
+    "benign_domains": ["onlinesbi.sbi", "sbi.co.in", "hdfcbank.com", "icicibank.com", "axisbank.com", "kotak.com", "paytm.com", "phonepe.com", "amazon.in", "amazon.com", "flipkart.com", "netflix.com", "myntra.com", "swiggy.com", "zomato.com", "jio.com", "airtel.in", "bsnl.co.in", "indiapost.gov.in", "gov.in", "nic.in", "rbi.org.in", "incometax.gov.in", "uidai.gov.in", "bluedart.com", "dtdc.in", "fedex.com", "dhl.com", "delhivery.com", "google.com", "whatsapp.com", "microsoft.com", "apple.com", "cred.club", "zepto.co", "bigbasket.com", "irctc.co.in", "epfindia.gov.in", "trai.gov.in", "npci.org.in"],
+    "payment_funnel_domains": ["paytm", "phonepe", "gpay", "upi", "razorpay"]
+  },
+  "upi_handle_suffixes": ["ybl", "okaxis", "oksbi", "okhdfcbank", "okicici", "paytm", "apl", "ibl", "axl", "upi", "axisb"]
+}

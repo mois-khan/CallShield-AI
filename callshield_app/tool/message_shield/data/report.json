@@ -1,0 +1,236 @@
+{
+ "train": {
+  "best_epoch": 4,
+  "val_macro_f1": 1.0,
+  "val_curve": [
+   {
+    "epoch": 1,
+    "val_macro_f1": 0.999
+   },
+   {
+    "epoch": 2,
+    "val_macro_f1": 0.9994
+   },
+   {
+    "epoch": 3,
+    "val_macro_f1": 0.9996
+   },
+   {
+    "epoch": 4,
+    "val_macro_f1": 1.0
+   },
+   {
+    "epoch": 5,
+    "val_macro_f1": 1.0
+   },
+   {
+    "epoch": 10,
+    "val_macro_f1": 1.0
+   },
+   {
+    "epoch": 20,
+    "val_macro_f1": 1.0
+   },
+   {
+    "epoch": 30,
+    "val_macro_f1": 1.0
+   },
+   {
+    "epoch": 30,
+    "val_macro_f1": 1.0
+   }
+  ]
+ },
+ "test": {
+  "samples": 969,
+  "accuracy": 0.999,
+  "macro_f1": 0.9991,
+  "legitimate_false_positive_rate": 0.0,
+  "legitimate_recall": 1.0,
+  "scam_messages_misclassified_as_legitimate": 0,
+  "per_class": {
+   "legitimate": {
+    "support": 93,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+   },
+   "spam": {
+    "support": 89,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+   },
+   "phishing": {
+    "support": 95,
+    "precision": 0.9896,
+    "recall": 1.0,
+    "f1": 0.9948
+   },
+   "financial_fraud": {
+    "support": 121,
+    "precision": 1.0,
+    "recall": 0.9917,
+    "f1": 0.9959
+   },
+   "credential_theft": {
+    "support": 106,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+   },
+   "impersonation": {
+    "support": 102,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+   },
+   "social_engineering": {
+    "support": 98,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+   },
+   "investment_scam": {
+    "support": 99,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+   },
+   "reward_scam": {
+    "support": 78,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+   },
+   "delivery_scam": {
+    "support": 88,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+   }
+  },
+  "confusion_matrix": [
+   [
+    93,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   [
+    0,
+    89,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   [
+    0,
+    0,
+    95,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   [
+    0,
+    0,
+    1,
+    120,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   [
+    0,
+    0,
+    0,
+    0,
+    106,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   [
+    0,
+    0,
+    0,
+    0,
+    0,
+    102,
+    0,
+    0,
+    0,
+    0
+   ],
+   [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    98,
+    0,
+    0,
+    0
+   ],
+   [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    99,
+    0,
+    0
+   ],
+   [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    78,
+    0
+   ],
+   [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    88
+   ]
+  ]
+ }
+}

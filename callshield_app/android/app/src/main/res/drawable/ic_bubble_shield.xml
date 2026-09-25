@@ -1,0 +1,17 @@
+<!-- FLOATING POPUP ONLY: dedicated bubble icon (referenced by
+     bubbleIcon: 'ic_bubble_shield' in lib/main.dart). White shield with the
+     app's indigo check, transparent background, circular-bubble friendly. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Shield silhouette -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,1.5 L20,4.5 C20,11 17.5,17.5 12,22.5 C6.5,17.5 4,11 4,4.5 Z" />
+    <!-- Check mark in CallShield indigo -->
+    <path
+        android:fillColor="#FF6366F1"
+        android:pathData="M10.55,14.9 L7.1,11.45 L8.5,10.05 L10.55,12.1 L15.5,7.15 L16.9,8.55 Z" />
+</vector>
