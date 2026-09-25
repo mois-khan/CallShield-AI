@@ -324,15 +324,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   // 📞 REQUEST CALL DIALOG
-  void _showRequestCallDialog() async {
-    // Load the previously saved number BEFORE opening the sheet
-    final prefs = await SharedPreferences.getInstance();
-    final savedNumber = prefs.getString('testCallNumber') ?? '';
-
-    final phoneController = TextEditingController(text: savedNumber);
+  void _showRequestCallDialog() {
+    final phoneController = TextEditingController();
     bool isLoading = false;
-
-    if (!mounted) return;
 
     showModalBottomSheet(
       context: context,
@@ -366,7 +360,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      "Enter the number to dial. It will be remembered for next time.",
+                      "Enter the customer phone number to dial. The agent phone (+91 81848 81001) will ring first.",
                       style: GoogleFonts.plusJakartaSans(color: Colors.grey[400], fontSize: 13),
                     ),
                     const SizedBox(height: 20),
@@ -416,11 +410,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           setModalState(() => isLoading = true);
 
                           final result = await CallService.requestCall(number);
-
-                          // ✅ Save the number if the call was initiated successfully
-                          if (result["success"] == true) {
-                            await prefs.setString('testCallNumber', number);
-                          }
 
                           setModalState(() => isLoading = false);
 

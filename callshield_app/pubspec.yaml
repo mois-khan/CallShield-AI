@@ -2,7 +2,7 @@ name: callshield_app
 description: "A new Flutter project."
 publish_to: 'none'
 
-version: 1.0.0+1
+version: 1.1.0+2
 
 environment:
   sdk: ^3.9.2
@@ -36,8 +36,17 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  integration_test:
+    sdk: flutter
 
   flutter_lints: ^5.0.0
 
 flutter:
   uses-material-design: true
+
+  # MESSAGE SHIELD assets (on-device model + local scam intelligence).
+  # The evaluation corpus is intentionally NOT bundled: it lives in the repo for
+  # tests and for tool/message_shield_eval.dart only.
+  assets:
+    - assets/message_shield/ml/
+    - assets/message_shield/intelligence/

@@ -10,6 +10,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sms_sender_background/sms_sender.dart';
 import 'package:flutter/services.dart';
 import 'report_service.dart';
+// 🆕 MESSAGE SHIELD: additive import, Call Shield logic below is unchanged.
+import '../message_shield/background/message_shield_background.dart';
 
 // 🚨 UPDATE WITH YOUR NGROK URL
 const String backendUrl = "wss://callshield-ai-backend.onrender.com/flutter-alerts";
@@ -62,6 +64,11 @@ Future<void> initializeBackgroundService() async {
 @pragma('vm:entry-point')
 void onStart(ServiceInstance service) async {
   DartPluginRegistrant.ensureInitialized();
+
+  // 🆕 MESSAGE SHIELD: single additive call. It only drains the Message Shield
+  // SMS queue when the user enabled automatic protection, and never touches the
+  // call pipeline, alerts, SOS or Grandma Mode below.
+  await MessageShieldBackgroundBridge.attach(service);
 
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 

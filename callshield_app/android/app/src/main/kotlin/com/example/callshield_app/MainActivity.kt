@@ -1,6 +1,7 @@
 package com.example.callshield_app
 
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import android.telecom.TelecomManager
 import androidx.annotation.NonNull
@@ -11,8 +12,14 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity: FlutterActivity() {
     private val CHANNEL = "com.callshield.native/telecom"
 
+    // 🆕 MESSAGE SHIELD (additive only): separate channel, does not touch CHANNEL
+    private var messageShieldBridge: MessageShieldNativeBridge? = null
+
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        // 🆕 MESSAGE SHIELD (additive only)
+        messageShieldBridge = MessageShieldNativeBridge(this, flutterEngine.dartExecutor.binaryMessenger)
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
             if (call.method == "endCall") {
@@ -26,6 +33,13 @@ class MainActivity: FlutterActivity() {
                 result.notImplemented()
             }
         }
+    }
+
+    // 🆕 MESSAGE SHIELD (additive only): forward share/process-text intents
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        messageShieldBridge?.handleNewIntent(intent)
     }
 
     private fun disconnectCall(): Boolean {

@@ -1,0 +1,171 @@
+{
+ "engine": "message_shield-ml-v1+scam-intel-v1.0.0",
+ "corpus_size": 969,
+ "obfuscated_size": 396,
+ "end_to_end_all": {
+  "precision": 0.9943,
+  "recall": 0.9909,
+  "f1": 0.9926,
+  "false_positive_rate": 0.0538,
+  "accuracy": 0.9866,
+  "tp": 868,
+  "fp": 5,
+  "fn": 8,
+  "tn": 88
+ },
+ "end_to_end_obfuscated": {
+  "precision": 1.0,
+  "recall": 0.9949,
+  "f1": 0.9974,
+  "false_positive_rate": 0.0,
+  "accuracy": 0.9949,
+  "tp": 387,
+  "fp": 0,
+  "fn": 2,
+  "tn": 7
+ },
+ "end_to_end_scam_band": {
+  "precision": 1.0,
+  "recall": 0.8995,
+  "f1": 0.9471,
+  "false_positive_rate": 0.0,
+  "accuracy": 0.9092,
+  "tp": 788,
+  "fp": 0,
+  "fn": 88,
+  "tn": 93
+ },
+ "end_to_end_spam_bucket": {
+  "precision": 0.9842,
+  "recall": 0.9932,
+  "f1": 0.9886,
+  "false_positive_rate": 0.1505,
+  "accuracy": 0.9794,
+  "tp": 870,
+  "fp": 14,
+  "fn": 6,
+  "tn": 79
+ },
+ "legitimate_clean_rate": 0.9462,
+ "legitimate_flagged": 5,
+ "legitimate_promo_bucketed": 9,
+ "per_class": {
+  "credential_theft": {
+   "precision": 0.955,
+   "recall": 1.0,
+   "f1": 0.977,
+   "false_positive_rate": 1.0,
+   "accuracy": 0.955,
+   "tp": 106,
+   "fp": 5,
+   "fn": 0,
+   "tn": 0
+  },
+  "delivery_scam": {
+   "precision": 0.9462,
+   "recall": 1.0,
+   "f1": 0.9724,
+   "false_positive_rate": 1.0,
+   "accuracy": 0.9462,
+   "tp": 88,
+   "fp": 5,
+   "fn": 0,
+   "tn": 0
+  },
+  "financial_fraud": {
+   "precision": 0.9603,
+   "recall": 1.0,
+   "f1": 0.9798,
+   "false_positive_rate": 1.0,
+   "accuracy": 0.9603,
+   "tp": 121,
+   "fp": 5,
+   "fn": 0,
+   "tn": 0
+  },
+  "impersonation": {
+   "precision": 0.9533,
+   "recall": 1.0,
+   "f1": 0.9761,
+   "false_positive_rate": 1.0,
+   "accuracy": 0.9533,
+   "tp": 102,
+   "fp": 5,
+   "fn": 0,
+   "tn": 0
+  },
+  "investment_scam": {
+   "precision": 0.9519,
+   "recall": 1.0,
+   "f1": 0.9754,
+   "false_positive_rate": 1.0,
+   "accuracy": 0.9519,
+   "tp": 99,
+   "fp": 5,
+   "fn": 0,
+   "tn": 0
+  },
+  "phishing": {
+   "precision": 0.95,
+   "recall": 1.0,
+   "f1": 0.9744,
+   "false_positive_rate": 1.0,
+   "accuracy": 0.95,
+   "tp": 95,
+   "fp": 5,
+   "fn": 0,
+   "tn": 0
+  },
+  "reward_scam": {
+   "precision": 0.9398,
+   "recall": 1.0,
+   "f1": 0.9689,
+   "false_positive_rate": 1.0,
+   "accuracy": 0.9398,
+   "tp": 78,
+   "fp": 5,
+   "fn": 0,
+   "tn": 0
+  },
+  "social_engineering": {
+   "precision": 0.9515,
+   "recall": 1.0,
+   "f1": 0.9751,
+   "false_positive_rate": 1.0,
+   "accuracy": 0.9515,
+   "tp": 98,
+   "fp": 5,
+   "fn": 0,
+   "tn": 0
+  },
+  "spam": {
+   "precision": 0.9432,
+   "recall": 0.9326,
+   "f1": 0.9379,
+   "false_positive_rate": 1.0,
+   "accuracy": 0.883,
+   "tp": 83,
+   "fp": 5,
+   "fn": 6,
+   "tn": 0
+  }
+ },
+ "category_recall": {
+  "credential_theft": "1.000",
+  "delivery_scam": "1.000",
+  "financial_fraud": "1.000",
+  "impersonation": "1.000",
+  "investment_scam": "1.000",
+  "phishing": "1.000",
+  "reward_scam": "1.000",
+  "social_engineering": "1.000",
+  "spam": "0.933"
+ },
+ "performance": {
+  "mean_us": 4803,
+  "p50_us": 4119,
+  "p95_us": 8532,
+  "max_us": 460673,
+  "rss_bytes": 289132544
+ }
+}

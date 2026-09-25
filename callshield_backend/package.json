@@ -15,7 +15,6 @@
     "body-parser": "^2.2.2",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
-    "groq-sdk": "^1.6.0",
     "sarvamai": "^1.1.6",
     "twilio": "^5.13.0",
     "wavefile": "^11.0.0",
